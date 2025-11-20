@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+  mariadb:
+    build:
+      context: ./mariadb-guacamole
+      dockerfile: Dockerfile
+    container_name: mariadb-guacamole
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: guacamole_db
+      MYSQL_USER: guacamole_user
+      MYSQL_PASSWORD: some_password
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: >
+        sh -c "mysqladmin ping -h localhost -uroot -prootpassword && 
+               mysql -uroot -prootpassword -e 'USE guacamole_db;'"
+      interval: 5s
+      retries: 20
+      start_period: 10s
+    # volumes: # tu peux commenter si pas encore de persistant
+    #   - mariadb_data:/var/lib/mysql
+
+  guacamole:
+    build:
+      context: ./guacamole-tomcat
+      dockerfile: Dockerfile
+    container_name: guacamole
+    environment:
+      GUACD_HOSTNAME: guacd
+      MYSQL_HOSTNAME: mariadb
+      MYSQL_DATABASE: guacamole_db
+      MYSQL_USER: guacamole_user
+      MYSQL_PASSWORD: some_password
+    ports:
+      - "8080:8080"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      guacd:
+        condition: service_started
+
+  guacd:
+    build:
+      context: ./guacd
+      dockerfile: Dockerfile
+    container_name: guacd
+    ports:
+      - "4822:4822"
+    
+
+# volumes:
+#   mariadb_data:
