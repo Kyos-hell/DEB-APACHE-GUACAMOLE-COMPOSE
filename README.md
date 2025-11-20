@@ -34,6 +34,8 @@ DEB-APACHE-GUACAMOLE-COMPOSE/
 ├─ docker-compose.yml
 └─ instruction.txt
 
+```
+
 ---
 
 ## 🎯 Project Goals
