@@ -93,7 +93,7 @@ docker-compose up -d --build
 
 3. Access Guacamole at: http://<your-ip>:8080/guacamole
 
-# Prerequisites
+## Prerequisites
  
 - Docker >= 24.0
 - Docker Compose >= 2.x
