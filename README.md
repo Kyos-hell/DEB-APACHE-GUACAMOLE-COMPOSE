@@ -15,6 +15,10 @@ Designed for **learning, experimentation, and DevOps/IaC practice**.
 ```text
 DEB-APACHE-GUACAMOLE-COMPOSE/
 │
+├─ .github/
+│  └─ workflows/
+│     └─ build.yml
+│     
 ├─ guacamole-tomcat/
 │  ├─ Dockerfile
 │  └─ docker-entrypoint.sh
@@ -32,7 +36,7 @@ DEB-APACHE-GUACAMOLE-COMPOSE/
 │     └─ 002-create-admin-user.sql
 │
 ├─ docker-compose.yml
-└─ instruction.txt
+├─ README.md
 ```
 
 ---
