@@ -285,12 +285,12 @@ jobs:
 
       - name: Start MariaDB + guacd (support)
         run: |
-          docker run -d --name smoke-mariadb \
+          docker run -d --name smoke-mariadb --network guacnet \
             -e MYSQL_DATABASE=guacamole_db \
             -e MYSQL_USER=guacamole_user \
             -e MYSQL_PASSWORD=some_password \
             ghcr.io/${{ github.actor }}/mariadb-guacamole:latest
-          docker run -d --name smoke-guacd ghcr.io/${{ github.actor }}/guacd:latest
+          docker run -d --name smoke-guacd --network guacnet ghcr.io/${{ github.actor }}/guacd:latest
 
       - name: Wait for MariaDB readiness
         run: |
@@ -307,9 +307,9 @@ jobs:
 
       - name: Start Guacamole container
         run: |
-          docker run -d --name smoke-guac -p 8080:8080 \
-            -e GUACD_HOSTNAME=smoke-guacd \
-            -e MYSQL_HOSTNAME=smoke-mariadb \
+          docker run -d --name smoke-guac --network guacnet -p 8080:8080 \
+            -e GUACD_HOST=smoke-guacd \
+            -e MYSQL_HOST=smoke-mariadb \
             -e MYSQL_DATABASE=guacamole_db \
             -e MYSQL_USER=guacamole_user \
             -e MYSQL_PASSWORD=some_password \
