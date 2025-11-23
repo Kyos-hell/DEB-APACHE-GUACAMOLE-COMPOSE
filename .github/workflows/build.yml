@@ -283,6 +283,12 @@ jobs:
           echo "No changes in guacamole-tomcat — skipping smoke test."
           exit 0
 
+      - name: Create network (idempotent)
+        run: |
+          docker network inspect guacnet >/dev/null 2>&1 || docker network create guacnet
+          echo "Networks:"
+          docker network ls
+
       - name: Start MariaDB + guacd (support)
         run: |
           docker run -d --name smoke-mariadb --network guacnet \
