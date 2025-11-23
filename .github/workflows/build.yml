@@ -313,9 +313,9 @@ jobs:
       - name: Wait for Guacamole HTTP
         run: |
           for i in $(seq 1 60); do
-            curl -sS -f http://localhost:8080/ >/dev/null 2>&1 && break || echo "Waiting Guacamole... ($i)" && sleep 2
+            curl -sS -f http://localhost:8080/guacamole/ >/dev/null 2>&1 && break || echo "Waiting Guacamole... ($i)" && sleep 2
           done
-          curl -sS -f http://localhost:8080/ >/dev/null 2>&1 || { echo "Guacamole not responding"; docker logs smoke-guac; exit 1; }
+          curl -sS -f http://localhost:8080/guacamole/ >/dev/null 2>&1 || { echo "Guacamole not responding"; docker logs smoke-guac; exit 1; }
           echo "Guacamole HTTP reachable"
 
       - name: (Optionnel) Test login API (guacadmin)
