@@ -1,5 +1,4 @@
-# Build Guacamole Stack images
-# Builds images and pushes only on main. Loads locally for PRs/dev runs.
+# Build Guacamole Stack images — détection fiable via dorny/paths-filter
 on:
   push:
     branches: ["dev", "main"]
@@ -17,28 +16,33 @@ jobs:
       packages: write
       contents: read
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (full history)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Detect changes in mariadb-guacamole
+      - name: Detect changed paths (paths-filter)
         id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            mariadb:
+              - 'mariadb-guacamole/**'
+
+      - name: Skip if no changes in mariadb
+        if: ${{ steps.changes.outputs.mariadb == 'false' }}
         run: |
-          if git diff --name-only HEAD^ HEAD | grep -q '^mariadb-guacamole/'; then
-            echo "changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "changes=false" >> $GITHUB_OUTPUT
-          fi
+          echo "No changes in mariadb-guacamole — skipping build."
+          exit 0
 
       - name: Show result
-        run: |
-          echo "Changes detected: ${{ steps.changes.outputs.changes }}"
+        run: echo "Changes detected: ${{ steps.changes.outputs.mariadb }}"
 
       - name: Setup Docker Buildx
-        if: ${{ steps.changes.outputs.changes == 'true' }}
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR (only on main)
-        if: ${{ steps.changes.outputs.changes == 'true' && github.ref == 'refs/heads/main' }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -46,15 +50,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build mariadb image (push only on main)
-        if: ${{ steps.changes.outputs.changes == 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: ./mariadb-guacamole
           file: ./mariadb-guacamole/Dockerfile
           push: ${{ github.ref == 'refs/heads/main' }}
           load: ${{ github.ref != 'refs/heads/main' }}
-          tags: |
-            "ghcr.io/${{ github.actor }}/mariadb-guacamole:latest"
+          tags: ghcr.io/${{ github.actor }}/mariadb-guacamole:latest
 
       - name: Show local images
         run: docker images
@@ -68,28 +70,33 @@ jobs:
       packages: write
       contents: read
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (full history)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Detect changes in guacd
+      - name: Detect changed paths (paths-filter)
         id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            guacd:
+              - 'guacd/**'
+
+      - name: Skip if no changes in guacd
+        if: ${{ steps.changes.outputs.guacd == 'false' }}
         run: |
-          if git diff --name-only HEAD^ HEAD | grep -q '^guacd/'; then
-            echo "changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "changes=false" >> $GITHUB_OUTPUT
-          fi
+          echo "No changes in guacd — skipping build."
+          exit 0
 
       - name: Show result
-        run: |
-          echo "Changes detected: ${{ steps.changes.outputs.changes }}"
+        run: echo "Changes detected: ${{ steps.changes.outputs.guacd }}"
 
       - name: Setup Docker Buildx
-        if: ${{ steps.changes.outputs.changes == 'true' }}
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR (only on main)
-        if: ${{ steps.changes.outputs.changes == 'true' && github.ref == 'refs/heads/main' }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -97,15 +104,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build guacd image (push only on main)
-        if: ${{ steps.changes.outputs.changes == 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: ./guacd
           file: ./guacd/Dockerfile
           push: ${{ github.ref == 'refs/heads/main' }}
           load: ${{ github.ref != 'refs/heads/main' }}
-          tags: |
-            "ghcr.io/${{ github.actor }}/guacd:latest"
+          tags: ghcr.io/${{ github.actor }}/guacd:latest
 
       - name: Show local images
         run: docker images
@@ -120,28 +125,33 @@ jobs:
       packages: write
       contents: read
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (full history)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Detect changes in guacamole-tomcat
+      - name: Detect changed paths (paths-filter)
         id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            guacamole:
+              - 'guacamole-tomcat/**'
+
+      - name: Skip if no changes in guacamole-tomcat
+        if: ${{ steps.changes.outputs.guacamole == 'false' }}
         run: |
-          if git diff --name-only HEAD^ HEAD | grep -q '^guacamole-tomcat/'; then
-            echo "changes=true" >> $GITHUB_OUTPUT
-          else
-            echo "changes=false" >> $GITHUB_OUTPUT
-          fi
+          echo "No changes in guacamole-tomcat — skipping build."
+          exit 0
 
       - name: Show result
-        run: |
-          echo "Changes detected: ${{ steps.changes.outputs.changes }}"
+        run: echo "Changes detected: ${{ steps.changes.outputs.guacamole }}"
 
       - name: Setup Docker Buildx
-        if: ${{ steps.changes.outputs.changes == 'true' }}
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR (only on main)
-        if: ${{ steps.changes.outputs.changes == 'true' && github.ref == 'refs/heads/main' }}
+        if: ${{ github.ref == 'refs/heads/main' }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -149,15 +159,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build guacamole image (push only on main)
-        if: ${{ steps.changes.outputs.changes == 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: ./guacamole-tomcat
           file: ./guacamole-tomcat/Dockerfile
           push: ${{ github.ref == 'refs/heads/main' }}
           load: ${{ github.ref != 'refs/heads/main' }}
-          tags: |
-            "ghcr.io/${{ github.actor }}/guacamole:latest"
+          tags: ghcr.io/${{ github.actor }}/guacamole:latest
 
       - name: Show local images
         run: docker images
