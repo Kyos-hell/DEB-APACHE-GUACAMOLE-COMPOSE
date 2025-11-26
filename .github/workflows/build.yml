@@ -1,4 +1,5 @@
-# Build Guacamole Stack images (détection de changements robuste)
+# Build Guacamole Stack images
+# Builds images and pushes only on main. Loads locally for PRs/dev runs.
 on:
   push:
     branches: ["dev", "main"]
@@ -15,52 +16,22 @@ jobs:
     permissions:
       packages: write
       contents: read
-
     steps:
-      - name: Checkout repository (full history)
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Detect changes in mariadb-guacamole (robust)
+      - name: Detect changes in mariadb-guacamole
         id: changes
-        env:
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
-          BEFORE_SHA: ${{ github.event.before }}
-          HEAD_SHA: ${{ github.sha }}
         run: |
-          set -euo pipefail
-          echo "Event: $GITHUB_EVENT_NAME"
-          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            BASE=${PR_BASE_SHA}
-            HEAD=${PR_HEAD_SHA}
-          else
-            BASE=${BEFORE_SHA}
-            HEAD=${HEAD_SHA}
-          fi
-
-          # If no base (initial commit) treat as changes=true
-          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
-            echo "No base commit available (initial commit?) — marking as changes=true"
-            echo "changes=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          # Ensure we have the refs available locally
-          echo "Fetching refs $BASE and $HEAD"
-          git fetch --no-tags --prune origin "$BASE" "$HEAD" || true
-
-          echo "Comparing $BASE..$HEAD"
-          if git diff --name-only "$BASE" "$HEAD" | grep -q '^mariadb-guacamole/'; then
+          if git diff --name-only HEAD^ HEAD | grep -q '^mariadb-guacamole/'; then
             echo "changes=true" >> $GITHUB_OUTPUT
           else
             echo "changes=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Show result
-        run: echo "Changes detected: ${{ steps.changes.outputs.changes }}"
+        run: |
+          echo "Changes detected: ${{ steps.changes.outputs.changes }}"
 
       - name: Setup Docker Buildx
         if: ${{ steps.changes.outputs.changes == 'true' }}
@@ -82,7 +53,8 @@ jobs:
           file: ./mariadb-guacamole/Dockerfile
           push: ${{ github.ref == 'refs/heads/main' }}
           load: ${{ github.ref != 'refs/heads/main' }}
-          tags: ghcr.io/${{ github.actor }}/mariadb-guacamole:latest
+          tags: |
+            "ghcr.io/${{ github.actor }}/mariadb-guacamole:latest"
 
       - name: Show local images
         run: docker images
@@ -95,47 +67,22 @@ jobs:
     permissions:
       packages: write
       contents: read
-
     steps:
-      - name: Checkout repository (full history)
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Detect changes in guacd (robust)
+      - name: Detect changes in guacd
         id: changes
-        env:
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
-          BEFORE_SHA: ${{ github.event.before }}
-          HEAD_SHA: ${{ github.sha }}
         run: |
-          set -euo pipefail
-          echo "Event: $GITHUB_EVENT_NAME"
-          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            BASE=${PR_BASE_SHA}
-            HEAD=${PR_HEAD_SHA}
-          else
-            BASE=${BEFORE_SHA}
-            HEAD=${HEAD_SHA}
-          fi
-
-          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
-            echo "changes=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          git fetch --no-tags --prune origin "$BASE" "$HEAD" || true
-          echo "Comparing $BASE..$HEAD"
-          if git diff --name-only "$BASE" "$HEAD" | grep -q '^guacd/'; then
+          if git diff --name-only HEAD^ HEAD | grep -q '^guacd/'; then
             echo "changes=true" >> $GITHUB_OUTPUT
           else
             echo "changes=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Show result
-        run: echo "Changes detected: ${{ steps.changes.outputs.changes }}"
+        run: |
+          echo "Changes detected: ${{ steps.changes.outputs.changes }}"
 
       - name: Setup Docker Buildx
         if: ${{ steps.changes.outputs.changes == 'true' }}
@@ -157,7 +104,8 @@ jobs:
           file: ./guacd/Dockerfile
           push: ${{ github.ref == 'refs/heads/main' }}
           load: ${{ github.ref != 'refs/heads/main' }}
-          tags: ghcr.io/${{ github.actor }}/guacd:latest
+          tags: |
+            "ghcr.io/${{ github.actor }}/guacd:latest"
 
       - name: Show local images
         run: docker images
@@ -171,47 +119,22 @@ jobs:
     permissions:
       packages: write
       contents: read
-
     steps:
-      - name: Checkout repository (full history)
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Detect changes in guacamole-tomcat (robust)
+      - name: Detect changes in guacamole-tomcat
         id: changes
-        env:
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          PR_BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || '' }}
-          BEFORE_SHA: ${{ github.event.before }}
-          HEAD_SHA: ${{ github.sha }}
         run: |
-          set -euo pipefail
-          echo "Event: $GITHUB_EVENT_NAME"
-          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
-            BASE=${PR_BASE_SHA}
-            HEAD=${PR_HEAD_SHA}
-          else
-            BASE=${BEFORE_SHA}
-            HEAD=${HEAD_SHA}
-          fi
-
-          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
-            echo "changes=true" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          git fetch --no-tags --prune origin "$BASE" "$HEAD" || true
-          echo "Comparing $BASE..$HEAD"
-          if git diff --name-only "$BASE" "$HEAD" | grep -q '^guacamole-tomcat/'; then
+          if git diff --name-only HEAD^ HEAD | grep -q '^guacamole-tomcat/'; then
             echo "changes=true" >> $GITHUB_OUTPUT
           else
             echo "changes=false" >> $GITHUB_OUTPUT
           fi
 
       - name: Show result
-        run: echo "Changes detected: ${{ steps.changes.outputs.changes }}"
+        run: |
+          echo "Changes detected: ${{ steps.changes.outputs.changes }}"
 
       - name: Setup Docker Buildx
         if: ${{ steps.changes.outputs.changes == 'true' }}
@@ -233,7 +156,8 @@ jobs:
           file: ./guacamole-tomcat/Dockerfile
           push: ${{ github.ref == 'refs/heads/main' }}
           load: ${{ github.ref != 'refs/heads/main' }}
-          tags: ghcr.io/${{ github.actor }}/guacamole:latest
+          tags: |
+            "ghcr.io/${{ github.actor }}/guacamole:latest"
 
       - name: Show local images
         run: docker images
