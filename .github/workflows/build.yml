@@ -275,7 +275,7 @@ jobs:
         needs.build-guacd.outputs.built == 'true' ||
         needs.build-guacamole.outputs.built == 'true'
       )
-    uses: ./.github/workflows/smoke-tests-full-stack.yml@dev
+    uses: ./.github/workflows/smoke-tests-full-stack.yml
     with:
       tag: ${{ github.sha }}
     secrets: inherit
