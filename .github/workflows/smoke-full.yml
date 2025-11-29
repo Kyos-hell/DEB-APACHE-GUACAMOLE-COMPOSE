@@ -1,19 +1,19 @@
-name: Smoke tests — full stack (guacd + mariadb + guacamole)
-
-permissions:
-  contents: read
-  packages: read
+name: Smoke tests full stack (guacd + mariadb + guacamole)
 
 on:
-  workflow_run:
-    workflows: ["build.yml"]
-    types: [completed]
   workflow_dispatch:
     inputs:
       tag:
         description: 'Optional: ci tag suffix (commit SHA). If empty, uses workflow_run.head_sha'
         required: false
         default: ''
+  workflow_run:
+    workflows: ["Build Guacamole Stack images (CI tag)"]
+    types: [completed]
+
+permissions:
+  contents: read
+  packages: read
 
 jobs:
   smoke-guacd:
