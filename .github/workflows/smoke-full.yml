@@ -6,7 +6,7 @@ permissions:
 
 on:
   workflow_run:
-    workflows: ["Build Guacamole Stack images (CI tag)"]
+    workflows: ["build.yml"]
     types: [completed]
   workflow_dispatch:
     inputs:
