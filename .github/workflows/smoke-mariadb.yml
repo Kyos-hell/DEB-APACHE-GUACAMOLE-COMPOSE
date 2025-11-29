@@ -1,29 +1,31 @@
-# Smoke Test MariaDB — rebuilds image locally and checks guacamole_db exists
+name: Smoke Test MariaDB (pull CI tag)
+
 on:
-  push:
-    paths:
-      - "mariadb-guacamole/**"
-    branches: ["dev"]
-  pull_request:
-    paths:
-      - "mariadb-guacamole/**"
-    branches: ["dev"]
+  workflow_run:
+    workflows: ["Build Guacamole Stack images (CI tag)"]
+    types: [completed]
   workflow_dispatch: {}
 
 jobs:
   smoke-mariadb:
     name: Smoke test mariadb (guacamole_db existence)
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Show CI tag SHA
+        run: |
+          echo "Build head sha: ${{ github.event.workflow_run.head_sha }}"
+          echo "Using CI tag suffix: ${{ github.event.workflow_run.head_sha }}"
 
-      - name: Build local mariadb image
-        run: docker build -t mariadb-guacamole:ci ./mariadb-guacamole
+      - name: Pull mariadb CI image
+        run: |
+          TAG=${{ github.event.workflow_run.head_sha }}
+          docker pull ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:ci-$TAG || true
 
       - name: Run MariaDB container (MYSQL_DATABASE=guacamole_db)
         run: |
-          docker run -d --name smoke-mariadb -e MYSQL_ROOT_PASSWORD=rootpassword -e MYSQL_DATABASE=guacamole_db mariadb-guacamole:ci
+          TAG=${{ github.event.workflow_run.head_sha }}
+          docker run -d --name smoke-mariadb -e MYSQL_ROOT_PASSWORD=rootpassword -e MYSQL_DATABASE=guacamole_db ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:ci-$TAG
 
       - name: Wait for MariaDB readiness
         run: |
@@ -39,14 +41,6 @@ jobs:
           docker exec smoke-mariadb mysql -uroot -prootpassword -e "SHOW DATABASES LIKE 'guacamole_db';" | grep -q guacamole_db \
             && echo "Database guacamole_db exists" \
             || (echo "Database guacamole_db NOT found" && docker logs smoke-mariadb && exit 1)
-
-      - name: List databases (debug)
-        if: ${{ success() }}
-        run: docker exec smoke-mariadb mysql -uroot -prootpassword -e "SHOW DATABASES;"
-
-      - name: Dump MariaDB logs (on failure)
-        if: ${{ failure() }}
-        run: docker logs smoke-mariadb || true
 
       - name: Cleanup
         if: always()
