@@ -90,6 +90,12 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:ci-${{ steps.set_tag.outputs.tag }}
 
+      - name: Push latest tag (when on main)
+        if: ${{ steps.set_built.outputs.built == 'true' && steps.mode.outputs.push == 'true' && github.ref == 'refs/heads/main' }}
+        run: |
+          docker tag ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:ci-${{ steps.set_tag.outputs.tag }} ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:latest
+          docker push ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:latest
+
       - name: Show local images
         if: ${{ steps.set_built.outputs.built == 'true' }}
         run: docker images
@@ -171,6 +177,12 @@ jobs:
           load: ${{ steps.mode2.outputs.push == 'false' }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/guacd:ci-${{ steps.set_tag.outputs.tag }}
+
+      - name: Push latest tag (when on main)
+        if: ${{ steps.set_built.outputs.built == 'true' && steps.mode2.outputs.push == 'true' && github.ref == 'refs/heads/main' }}
+        run: |
+          docker tag ghcr.io/${{ github.repository_owner }}/guacd:ci-${{ steps.set_tag.outputs.tag }} ghcr.io/${{ github.repository_owner }}/guacd:latest
+          docker push ghcr.io/${{ github.repository_owner }}/guacd:latest
 
       - name: Show local images
         if: ${{ steps.set_built.outputs.built == 'true' }}
@@ -254,6 +266,12 @@ jobs:
           load: ${{ steps.mode3.outputs.push == 'false' }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/guacamole:ci-${{ steps.set_tag.outputs.tag }}
+
+      - name: Push latest tag (when on main)
+        if: ${{ steps.set_built.outputs.built == 'true' && steps.mode3.outputs.push == 'true' && github.ref == 'refs/heads/main' }}
+        run: |
+          docker tag ghcr.io/${{ github.repository_owner }}/guacamole:ci-${{ steps.set_tag.outputs.tag }} ghcr.io/${{ github.repository_owner }}/guacamole:latest
+          docker push ghcr.io/${{ github.repository_owner }}/guacamole:latest
 
       - name: Show local images
         if: ${{ steps.set_built.outputs.built == 'true' }}
