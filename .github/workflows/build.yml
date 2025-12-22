@@ -1,155 +1,317 @@
-name: Build Guacamole Stack images
+name: Build Guacamole Stack images (CI tag)
 
 on:
   push:
-    branches: ["main"]
+    branches: ["dev", "main"]
   pull_request:
+    branches: ["dev", "main"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   ###########################################
-  # JOB 1 — Build MariaDB image
+  # JOB 1 — Build MariaDB image (CI tag)
   ###########################################
   build-mariadb:
+    name: Build MariaDB image (:ci)
     runs-on: ubuntu-latest
     permissions:
       packages: write
       contents: read
-
+    outputs:
+      built: ${{ steps.set_built.outputs.built }}
+      tag: ${{ steps.set_tag.outputs.tag }}
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (full history)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Detect changes in mariadb-guacamole
-        id: changes
+      - name: Detect changed paths (paths-filter)
+        id: pf
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            mariadb:
+              - 'mariadb-guacamole/**'
+
+      - name: Decide build or skip
+        id: set_built
         run: |
-          if git diff --name-only HEAD^ HEAD | grep -q '^mariadb-guacamole/'; then
-            echo "changes=true" >> $GITHUB_OUTPUT
+          # Always build on pushes to main so we can update :latest on main merges
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            echo "built=true" >> $GITHUB_OUTPUT
+            echo "On main branch — forcing build."
           else
-            echo "changes=false" >> $GITHUB_OUTPUT
+            if [ "${{ steps.pf.outputs.mariadb }}" = "false" ]; then
+              echo "built=false" >> $GITHUB_OUTPUT
+              echo "No changes in mariadb-guacamole — skipping build."
+            else
+              echo "built=true" >> $GITHUB_OUTPUT
+            fi
           fi
 
-      - name: Show result
+      - name: Set tag output
+        id: set_tag
         run: |
-          echo "Changes detected: ${{ steps.changes.outputs.changes }}"
+          echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Decide push or load (avoid pushing for forked PRs)
+        id: mode
+        if: ${{ steps.set_built.outputs.built == 'true' }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "push=true" >> $GITHUB_OUTPUT
+          else
+            if [ "${{ github.event.pull_request.head.repo.full_name }}" = "${{ github.repository }}" ]; then
+              echo "push=true" >> $GITHUB_OUTPUT
+            else
+              echo "push=false" >> $GITHUB_OUTPUT
+            fi
+          fi
 
       - name: Setup Docker Buildx
-        if: ${{ steps.changes.outputs.changes == 'true' }}
+        if: ${{ steps.set_built.outputs.built == 'true' }}
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to GHCR
-        if: ${{ steps.changes.outputs.changes == 'true' }}
+      - name: Login to GHCR (when push)
+        if: ${{ steps.set_built.outputs.built == 'true' && steps.mode.outputs.push == 'true' }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push mariadb image
-        if: ${{ steps.changes.outputs.changes == 'true' }}
+      - name: Build & push/load mariadb image (ci tag)
+        if: ${{ steps.set_built.outputs.built == 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: ./mariadb-guacamole
           file: ./mariadb-guacamole/Dockerfile
-          push: true
-          tags: ghcr.io/${{ github.actor }}/mariadb-guacamole:latest
+          push: ${{ steps.mode.outputs.push == 'true' }}
+          load: ${{ steps.mode.outputs.push == 'false' }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:ci-${{ steps.set_tag.outputs.tag }}
 
-      - run: docker images
+      - name: Push latest tag (when on main)
+        if: ${{ steps.set_built.outputs.built == 'true' && steps.mode.outputs.push == 'true' && github.ref == 'refs/heads/main' }}
+        run: |
+          docker tag ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:ci-${{ steps.set_tag.outputs.tag }} ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:latest
+          docker push ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:latest
+
+      - name: Show local images
+        if: ${{ steps.set_built.outputs.built == 'true' }}
+        run: docker images
 
   ###########################################
-  # JOB 2 — Build GUACD image
+  # JOB 2 — Build GUACD image (CI tag)
   ###########################################
   build-guacd:
+    name: Build GUACD image (:ci)
     runs-on: ubuntu-latest
     permissions:
       packages: write
       contents: read
-
+    outputs:
+      built: ${{ steps.set_built.outputs.built }}
+      tag: ${{ steps.set_tag.outputs.tag }}
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (full history)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Detect changes in mariadb-guacamole
-        id: changes
+      - name: Detect changed paths (paths-filter)
+        id: pf2
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            guacd:
+              - 'guacd/**'
+
+      - name: Decide build or skip
+        id: set_built
         run: |
-          if git diff --name-only HEAD^ HEAD | grep -q '^guacd/'; then
-            echo "changes=true" >> $GITHUB_OUTPUT
+          # Always build on pushes to main so we can update :latest on main merges
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            echo "built=true" >> $GITHUB_OUTPUT
+            echo "On main branch — forcing build."
           else
-            echo "changes=false" >> $GITHUB_OUTPUT
+            if [ "${{ steps.pf2.outputs.guacd }}" = "false" ]; then
+              echo "built=false" >> $GITHUB_OUTPUT
+              echo "No changes in guacd — skipping build."
+            else
+              echo "built=true" >> $GITHUB_OUTPUT
+            fi
           fi
 
-      - name: Show result
+      - name: Set tag output
+        id: set_tag
         run: |
-          echo "Changes detected: ${{ steps.changes.outputs.changes }}"
+          echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Decide push or load (avoid pushing for forked PRs)
+        id: mode2
+        if: ${{ steps.set_built.outputs.built == 'true' }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "push=true" >> $GITHUB_OUTPUT
+          else
+            if [ "${{ github.event.pull_request.head.repo.full_name }}" = "${{ github.repository }}" ]; then
+              echo "push=true" >> $GITHUB_OUTPUT
+            else
+              echo "push=false" >> $GITHUB_OUTPUT
+            fi
+          fi
 
       - name: Setup Docker Buildx
-        if: ${{ steps.changes.outputs.changes == 'true' }}
+        if: ${{ steps.set_built.outputs.built == 'true' }}
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to GHCR
-        if: ${{ steps.changes.outputs.changes == 'true' }}
+      - name: Login to GHCR (when push)
+        if: ${{ steps.set_built.outputs.built == 'true' && steps.mode2.outputs.push == 'true' }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push guacd image
-        if: ${{ steps.changes.outputs.changes == 'true' }}
+      - name: Build & push/load guacd image (ci tag)
+        if: ${{ steps.set_built.outputs.built == 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: ./guacd
           file: ./guacd/Dockerfile
-          push: true
-          tags: ghcr.io/${{ github.actor }}/guacd:latest
+          push: ${{ steps.mode2.outputs.push == 'true' }}
+          load: ${{ steps.mode2.outputs.push == 'false' }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/guacd:ci-${{ steps.set_tag.outputs.tag }}
 
-      - run: docker images
+      - name: Push latest tag (when on main)
+        if: ${{ steps.set_built.outputs.built == 'true' && steps.mode2.outputs.push == 'true' && github.ref == 'refs/heads/main' }}
+        run: |
+          docker tag ghcr.io/${{ github.repository_owner }}/guacd:ci-${{ steps.set_tag.outputs.tag }} ghcr.io/${{ github.repository_owner }}/guacd:latest
+          docker push ghcr.io/${{ github.repository_owner }}/guacd:latest
+
+      - name: Show local images
+        if: ${{ steps.set_built.outputs.built == 'true' }}
+        run: docker images
 
   ###########################################
-  # JOB 3 — Build Guacamole Web (Tomcat)
+  # JOB 3 — Build Guacamole Web (Tomcat) (CI tag)
   ###########################################
   build-guacamole:
+    name: Build Guacamole image (:ci)
     runs-on: ubuntu-latest
     needs: build-guacd
     permissions:
       packages: write
       contents: read
-
+    outputs:
+      built: ${{ steps.set_built.outputs.built }}
+      tag: ${{ steps.set_tag.outputs.tag }}
     steps:
-      - name: Checkout repository
+      - name: Checkout repository (full history)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Detect changes in mariadb-guacamole
-        id: changes
+      - name: Detect changed paths (paths-filter)
+        id: pf3
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            guacamole:
+              - 'guacamole-tomcat/**'
+
+      - name: Decide build or skip
+        id: set_built
         run: |
-          if git diff --name-only HEAD^ HEAD | grep -q '^guacamole-tomcat/'; then
-            echo "changes=true" >> $GITHUB_OUTPUT
+          # Always build on pushes to main so we can update :latest on main merges
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            echo "built=true" >> $GITHUB_OUTPUT
+            echo "On main branch — forcing build."
           else
-            echo "changes=false" >> $GITHUB_OUTPUT
+            if [ "${{ steps.pf3.outputs.guacamole }}" = "false" ]; then
+              echo "built=false" >> $GITHUB_OUTPUT
+              echo "No changes in guacamole-tomcat — skipping build."
+            else
+              echo "built=true" >> $GITHUB_OUTPUT
+            fi
           fi
 
-      - name: Show result
+      - name: Set tag output
+        id: set_tag
         run: |
-          echo "Changes detected: ${{ steps.changes.outputs.changes }}"
+          echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Decide push or load (avoid pushing for forked PRs)
+        id: mode3
+        if: ${{ steps.set_built.outputs.built == 'true' }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "push=true" >> $GITHUB_OUTPUT
+          else
+            if [ "${{ github.event.pull_request.head.repo.full_name }}" = "${{ github.repository }}" ]; then
+              echo "push=true" >> $GITHUB_OUTPUT
+            else
+              echo "push=false" >> $GITHUB_OUTPUT
+            fi
+          fi
 
       - name: Setup Docker Buildx
-        if: ${{ steps.changes.outputs.changes == 'true' }}
+        if: ${{ steps.set_built.outputs.built == 'true' }}
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to GHCR
-        if: ${{ steps.changes.outputs.changes == 'true' }}
+      - name: Login to GHCR (when push)
+        if: ${{ steps.set_built.outputs.built == 'true' && steps.mode3.outputs.push == 'true' }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push guacamole image
-        if: ${{ steps.changes.outputs.changes == 'true' }}
+      - name: Build & push/load guacamole image (ci tag)
+        if: ${{ steps.set_built.outputs.built == 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: ./guacamole-tomcat
           file: ./guacamole-tomcat/Dockerfile
-          push: true
-          tags: ghcr.io/${{ github.actor }}/guacamole:latest
+          push: ${{ steps.mode3.outputs.push == 'true' }}
+          load: ${{ steps.mode3.outputs.push == 'false' }}
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/guacamole:ci-${{ steps.set_tag.outputs.tag }}
 
-      - run: docker images
+      - name: Push latest tag (when on main)
+        if: ${{ steps.set_built.outputs.built == 'true' && steps.mode3.outputs.push == 'true' && github.ref == 'refs/heads/main' }}
+        run: |
+          docker tag ghcr.io/${{ github.repository_owner }}/guacamole:ci-${{ steps.set_tag.outputs.tag }} ghcr.io/${{ github.repository_owner }}/guacamole:latest
+          docker push ghcr.io/${{ github.repository_owner }}/guacamole:latest
+
+      - name: Show local images
+        if: ${{ steps.set_built.outputs.built == 'true' }}
+        run: docker images
+
+  ###########################################
+  # JOB 4 — Run smoke tests after images are built and pushed
+  ###########################################
+  smoke-tests:
+    name: Run smoke tests (reusable workflow)
+    needs: [build-mariadb, build-guacd, build-guacamole]
+    # Only run smoke on dev branch and only when not a fork PR (same check as before)
+    # Additionally only run if at least one of the build jobs actually built an image
+    if: >
+      github.ref == 'refs/heads/dev' &&
+      (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) &&
+      (
+        needs.build-mariadb.outputs.built == 'true' ||
+        needs.build-guacd.outputs.built == 'true' ||
+        needs.build-guacamole.outputs.built == 'true'
+      )
+    uses: ./.github/workflows/smoke-tests-full-stack.yml
+    with:
+      tag: ${{ github.sha }}
+    secrets: inherit
