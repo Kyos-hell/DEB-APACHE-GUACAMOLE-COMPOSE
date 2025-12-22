@@ -1,9 +1,20 @@
 #!/bin/bash
 set -e
 
-# Ensure data directory exists and is owned by mysql (runtime chown for PVC mounts)
+# Ensure data directory exists and print diagnostics (helps with bind mounts/PVC debugging)
 mkdir -p /var/lib/mysql
-chown -R mysql:mysql /var/lib/mysql
+echo "Listing /var/lib/mysql (pre-chown):"
+ls -la /var/lib/mysql || true
+echo "Attempting to set ownership to mysql:mysql (may fail on some mounts)..."
+if chown -R mysql:mysql /var/lib/mysql 2>/dev/null; then
+    echo "Ownership set to mysql:mysql"
+else
+    echo "Warning: chown failed — /var/lib/mysql may not be writable or chown unsupported by the filesystem; proceeding anyway"
+fi
+
+echo "Listing /var/lib/mysql (post-chown):"
+ls -la /var/lib/mysql || true
+
 
 # Initialize database files if needed
 if [ ! -d "/var/lib/mysql/mysql" ]; then
@@ -12,9 +23,15 @@ if [ ! -d "/var/lib/mysql/mysql" ]; then
         mariadb-install-db --user=mysql --datadir=/var/lib/mysql
     elif command -v mysql_install_db >/dev/null 2>&1; then
         mysql_install_db --user=mysql --datadir=/var/lib/mysql
+    elif mysqld --help >/dev/null 2>&1; then
+        echo "Falling back to 'mysqld --initialize-insecure' to create system tables..."
+        mysqld --initialize-insecure --user=mysql --datadir=/var/lib/mysql
+        echo "Initialization via mysqld --initialize-insecure done (if supported)."
     else
-        echo "No mariadb-install-db or mysql_install_db found; skipping automatic initialization"
+        echo "No mariadb-install-db/mysql_install_db/mysqld --initialize available; continuing (may fail on empty datadir)"
     fi
+    echo "Listing /var/lib/mysql after init:"
+    ls -la /var/lib/mysql || true
 fi
 
 # --- Start MariaDB in the background for initialization --- 
