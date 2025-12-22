@@ -99,8 +99,16 @@ jobs:
       - name: Push latest tag (when on main)
         if: ${{ steps.set_built.outputs.built == 'true' && steps.mode.outputs.push == 'true' && github.ref == 'refs/heads/main' }}
         run: |
-          docker tag ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:ci-${{ steps.set_tag.outputs.tag }} ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:latest
-          docker push ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:latest
+          set -euo pipefail
+          CI_IMG="ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:ci-${{ steps.set_tag.outputs.tag }}"
+          LATEST="ghcr.io/${{ github.repository_owner }}/mariadb-guacamole:latest"
+          echo "Ensuring CI image is available locally: $CI_IMG"
+          if ! docker image inspect "$CI_IMG" >/dev/null 2>&1; then
+            echo "Pulling $CI_IMG from registry..."
+            docker pull "$CI_IMG"
+          fi
+          docker tag "$CI_IMG" "$LATEST"
+          docker push "$LATEST"
 
       - name: Show local images
         if: ${{ steps.set_built.outputs.built == 'true' }}
@@ -193,8 +201,16 @@ jobs:
       - name: Push latest tag (when on main)
         if: ${{ steps.set_built.outputs.built == 'true' && steps.mode2.outputs.push == 'true' && github.ref == 'refs/heads/main' }}
         run: |
-          docker tag ghcr.io/${{ github.repository_owner }}/guacd:ci-${{ steps.set_tag.outputs.tag }} ghcr.io/${{ github.repository_owner }}/guacd:latest
-          docker push ghcr.io/${{ github.repository_owner }}/guacd:latest
+          set -euo pipefail
+          CI_IMG="ghcr.io/${{ github.repository_owner }}/guacd:ci-${{ steps.set_tag.outputs.tag }}"
+          LATEST="ghcr.io/${{ github.repository_owner }}/guacd:latest"
+          echo "Ensuring CI image is available locally: $CI_IMG"
+          if ! docker image inspect "$CI_IMG" >/dev/null 2>&1; then
+            echo "Pulling $CI_IMG from registry..."
+            docker pull "$CI_IMG"
+          fi
+          docker tag "$CI_IMG" "$LATEST"
+          docker push "$LATEST"
 
       - name: Show local images
         if: ${{ steps.set_built.outputs.built == 'true' }}
@@ -288,8 +304,16 @@ jobs:
       - name: Push latest tag (when on main)
         if: ${{ steps.set_built.outputs.built == 'true' && steps.mode3.outputs.push == 'true' && github.ref == 'refs/heads/main' }}
         run: |
-          docker tag ghcr.io/${{ github.repository_owner }}/guacamole:ci-${{ steps.set_tag.outputs.tag }} ghcr.io/${{ github.repository_owner }}/guacamole:latest
-          docker push ghcr.io/${{ github.repository_owner }}/guacamole:latest
+          set -euo pipefail
+          CI_IMG="ghcr.io/${{ github.repository_owner }}/guacamole:ci-${{ steps.set_tag.outputs.tag }}"
+          LATEST="ghcr.io/${{ github.repository_owner }}/guacamole:latest"
+          echo "Ensuring CI image is available locally: $CI_IMG"
+          if ! docker image inspect "$CI_IMG" >/dev/null 2>&1; then
+            echo "Pulling $CI_IMG from registry..."
+            docker pull "$CI_IMG"
+          fi
+          docker tag "$CI_IMG" "$LATEST"
+          docker push "$LATEST"
 
       - name: Show local images
         if: ${{ steps.set_built.outputs.built == 'true' }}
