@@ -333,7 +333,7 @@ jobs:
         if: ${{ steps.set_built.outputs.built == 'true' }}
         run: docker images
 
-  ###########################################
+    ###########################################
   # JOB 4 — Run smoke tests after images are built and pushed
   ###########################################
   smoke-tests:
@@ -353,3 +353,26 @@ jobs:
     with:
       tag: ${{ github.sha }}
     secrets: inherit
+
+  ###########################################
+  # JOB 5 — Trigger Helm values auto-update
+  ###########################################
+  trigger-helm-update:
+    name: Trigger Helm values auto-update
+    needs: [smoke-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Trigger update-images workflow in helm repo
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_TAG: ci-${{ github.sha }}
+        run: |
+          echo "🚀 Dispatching update-images workflow in helm-apache-guacamole..."
+          gh api repos/kyos-hell/helm-apache-guacamole/dispatches \
+            -X POST \
+            -f event_type="images-built" \
+            -f client_payload="{\"image_tag\":\"${IMAGE_TAG}\",\"source_repo\":\"deb-apache-guacamole-compose\",\"source_sha\":\"${{ github.sha }}\"}"
+          echo "✅ Repository dispatch sent successfully"
