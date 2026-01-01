@@ -354,12 +354,12 @@ jobs:
       tag: ${{ github.sha }}
     secrets: inherit
 
-  ###########################################
+   ###########################################
   # JOB 5 — Trigger Helm values auto-update
   ###########################################
   trigger-helm-update:
     name: Trigger Helm values auto-update
-    needs: [smoke-tests]
+    needs: [build-mariadb, build-guacd, build-guacamole]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
