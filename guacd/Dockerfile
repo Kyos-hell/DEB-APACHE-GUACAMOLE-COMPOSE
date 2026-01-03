@@ -59,4 +59,3 @@ USER 114
 # Entrypoint
 ENTRYPOINT ["docker-entrypoint.sh"]
 
-#testd
