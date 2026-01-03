@@ -354,7 +354,7 @@ jobs:
       tag: ${{ github.sha }}
     secrets: inherit
 
-    ###########################################
+  ###########################################
   # JOB 5 — Trigger Helm values auto-update
   ###########################################
   trigger-helm-update:
@@ -374,5 +374,5 @@ jobs:
           gh api repos/kyos-hell/helm-apache-guacamole/dispatches \
             -X POST \
             -f event_type="images-built" \
-            -f client_payload="{\"image_tag\":\"${IMAGE_TAG}\",\"source_repo\":\"deb-apache-guacamole-compose\",\"source_sha\":\"${{ github.sha }}\"}"
+            -f client_payload="$(jq -n --arg tag "$IMAGE_TAG" --arg repo "deb-apache-guacamole-compose" --arg sha "${{ github.sha }}" '{image_tag: $tag, source_repo: $repo, source_sha: $sha}')"
           echo "✅ Repository dispatch sent successfully"
