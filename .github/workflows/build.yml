@@ -354,7 +354,7 @@ jobs:
       tag: ${{ github.sha }}
     secrets: inherit
 
-   ###########################################
+    ###########################################
   # JOB 5 — Trigger Helm values auto-update
   ###########################################
   trigger-helm-update:
@@ -367,7 +367,7 @@ jobs:
     steps:
       - name: Trigger update-images workflow in helm repo
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}
           IMAGE_TAG: ci-${{ github.sha }}
         run: |
           echo "🚀 Dispatching update-images workflow in helm-apache-guacamole..."
