@@ -369,10 +369,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}
           IMAGE_TAG: ci-${{ github.sha }}
+          REPO_OWNER: kyos-hell
+          REPO_NAME: helm-apache-guacamole
         run: |
           echo "🚀 Dispatching update-images workflow in helm-apache-guacamole..."
-          gh api repos/kyos-hell/helm-apache-guacamole/dispatches \
-            -X POST \
-            -f event_type="images-built" \
-            -f client_payload="$(jq -n --arg tag "$IMAGE_TAG" --arg repo "deb-apache-guacamole-compose" --arg sha "${{ github.sha }}" '{image_tag: $tag, source_repo: $repo, source_sha: $sha}')"
+          curl -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/dispatches \
+            -d "{\"event_type\":\"images-built\",\"client_payload\":{\"image_tag\":\"$IMAGE_TAG\",\"source_repo\":\"deb-apache-guacamole-compose\",\"source_sha\":\"${{ github.sha }}\"}}"
           echo "✅ Repository dispatch sent successfully"
